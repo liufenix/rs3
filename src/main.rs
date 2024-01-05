@@ -27,14 +27,20 @@ struct Cli {
 
 #[derive(Debug, Subcommand)]
 enum Commands {
-    ListBucket,
+    ListBuckets,
     /// Clones repos
     #[command(arg_required_else_help = true)]
     CreateBucket {
         /// The remote to clone
         bucket: String,
     },
+    #[command(arg_required_else_help = true)]
     DeleteBucket {
+        /// The remote to clone
+        bucket: String,
+    },
+    #[command(arg_required_else_help = true)]
+    ListObjects {
         /// The remote to clone
         bucket: String,
     },
@@ -131,8 +137,8 @@ async fn main() -> Result<(), Error>  {
     let args = Cli::parse();
 
     match args.command {
-        Commands::ListBucket => {
-            let resp = bucket::list_bucket(&s3_client).await?;
+        Commands::ListBuckets => {
+            let resp = bucket::list_buckets(&s3_client).await?;
             let buckets = resp.buckets();
             println!("{:25}  {}", "桶名称", "创建时间");
             for bucket in buckets {
@@ -145,13 +151,12 @@ async fn main() -> Result<(), Error>  {
             println!("result -> {}", resp.is_ok())
         }
         Commands::DeleteBucket { bucket } => {
-            println!("DeleteBucket -> {bucket}");
-            // let resp = bucket::delete_bucket(&s3_client, &bucket).await;
-            // if resp.is_err(){
-            //     println!("error -> {:?}", resp.unwrap_err().into_service_error())
-            // }
             bucket::delete_bucket(&s3_client, &bucket).await?;
         }
+        Commands::ListObjects { bucket } => {
+            let resp = object::list_objects(&s3_client, &bucket).await?;
+        }
+
         Commands::Diff {
             mut base,
             mut head,

@@ -16,6 +16,6 @@ pub async fn delete_bucket(client: &Client, bucket_name: &str) -> Result<DeleteB
 	client.delete_bucket().bucket(bucket_name).send().await
 }
 
-pub async fn list_bucket(client: &Client) -> Result<ListBucketsOutput, SdkError<ListBucketsError>> {
+pub async fn list_buckets(client: &Client) -> Result<ListBucketsOutput, SdkError<ListBucketsError>> {
 	client.list_buckets().send().await
 }
