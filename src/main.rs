@@ -2,15 +2,18 @@ pub mod conf;
 pub mod client;
 pub mod object;
 pub mod bucket;
+mod error;
 
 use std::{ffi::{OsString, OsStr}, path::PathBuf};
 
-use anyhow::{Result, Error};
+use anyhow::{Result};
+use aws_smithy_types::date_time::Format;
 use config::{Config, File};
 use conf::AppConfig;
 
 // clap 引用
 use clap::{Args, Parser, Subcommand, ValueEnum};
+use crate::error::Error;
 
 /// A fictional versioning CLI
 #[derive(Debug, Parser)] // requires `derive` feature
@@ -19,10 +22,12 @@ use clap::{Args, Parser, Subcommand, ValueEnum};
 struct Cli {
     #[command(subcommand)]
     command: Commands,
+
 }
 
 #[derive(Debug, Subcommand)]
 enum Commands {
+    ListBucket,
     /// Clones repos
     #[command(arg_required_else_help = true)]
     CreateBucket {
@@ -126,6 +131,14 @@ async fn main() -> Result<(), Error>  {
     let args = Cli::parse();
 
     match args.command {
+        Commands::ListBucket => {
+            let resp = bucket::list_bucket(&s3_client).await?;
+            let buckets = resp.buckets();
+            println!("{:25}  {}", "桶名称", "创建时间");
+            for bucket in buckets {
+                println!("{:25}  {}", bucket.name().unwrap_or_default(), bucket.creation_date().unwrap().fmt(Format::DateTime).unwrap())
+            }
+        }
         Commands::CreateBucket { bucket } => {
             println!("CreateBucket -> {bucket}");
             let resp = bucket::create_bucket(&s3_client, &bucket).await;
@@ -133,11 +146,11 @@ async fn main() -> Result<(), Error>  {
         }
         Commands::DeleteBucket { bucket } => {
             println!("DeleteBucket -> {bucket}");
-            let resp = bucket::delete_bucket(&s3_client, &bucket).await;
-            if resp.is_err(){
-                println!("error -> {:?}", resp.unwrap_err().into_service_error())
-            }
-
+            // let resp = bucket::delete_bucket(&s3_client, &bucket).await;
+            // if resp.is_err(){
+            //     println!("error -> {:?}", resp.unwrap_err().into_service_error())
+            // }
+            bucket::delete_bucket(&s3_client, &bucket).await?;
         }
         Commands::Diff {
             mut base,
