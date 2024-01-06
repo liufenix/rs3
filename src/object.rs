@@ -7,9 +7,8 @@ use aws_sdk_s3::primitives::ByteStream;
 use aws_sdk_s3::operation::list_objects_v2::ListObjectsV2Error;
 use std::fs::{create_dir_all, File};
 use std::io::{BufWriter, Write};
-use aws_sdk_s3::operation::put_object::PutObjectError;
 use aws_smithy_types::date_time::Format;
-use crate::error::Error;
+
 
 pub async fn list_objects(client: &Client, bucket_name: &str, prefix: &str) -> Result<String, SdkError<ListObjectsV2Error>> {
 	// BUILD - aws request
