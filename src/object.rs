@@ -5,27 +5,35 @@ use aws_sdk_s3::error::SdkError;
 use aws_sdk_s3::operation::list_objects_v2::ListObjectsV2Error;
 use aws_smithy_types::date_time::Format;
 
-pub async fn list_objects(client: &Client, bucket_name: &str) -> Result<Vec<String>, SdkError<ListObjectsV2Error>> {
+pub async fn list_objects(client: &Client, bucket_name: &str, prefix: &str) -> Result<String, SdkError<ListObjectsV2Error>> {
 	// BUILD - aws request
 	let req = client.list_objects_v2()
 		.bucket(bucket_name)
-		.prefix("");
+		.prefix(prefix);
 
 	// EXECUTE
 	let res = req.send().await?;
 
 	// COLLECT
 	let objects = res.contents();
-	println!("{:<98} | {:<26} | {:<30}", "对象key", "对象大小", "最后修改时间");
+	println!("{:<48} | {:<5} | {:<30}", "对象key", "对象大小", "最后修改时间");
+	let max = 77;
 	for object in objects {
-		println!("{:<100} | {:<30} | {:<30}", object.key().unwrap(), object.size().unwrap(), object.last_modified().unwrap().fmt(Format::DateTime).unwrap() )
+		println!("{:<50} | {:<9} | {:<30}", object.key().unwrap(), format_size(object.size().unwrap() as f64), object.last_modified().unwrap().fmt(Format::DateTime).unwrap() )
 	}
 
-	let keys = objects
-		.iter()
-		.filter_map(|o| o.key.as_ref())
-		.map(|s| s.to_string())
-		.collect::<Vec<_>>();
+	Ok(String::from("OK"))
+}
 
-	Ok(keys)
+fn format_size(bytes: f64) -> String {
+	let units = ["B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"];
+	let mut index = 0;
+	let mut size = bytes;
+
+	while size >= 1024.0 && index < units.len() - 1 {
+		size /= 1024.0;
+		index += 1;
+	}
+
+	format!("{:.2} {}", size, units[index])
 }

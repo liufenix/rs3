@@ -39,10 +39,13 @@ enum Commands {
         /// The remote to clone
         bucket: String,
     },
-    #[command(arg_required_else_help = true)]
     ListObjects {
-        /// The remote to clone
+        /// the bucket
+        #[arg(required = true)]
         bucket: String,
+        /// the prefix
+        #[arg(required = false)]
+        prefix: String
     },
     /// Compare two commits
     Diff {
@@ -138,23 +141,16 @@ async fn main() -> Result<(), Error>  {
 
     match args.command {
         Commands::ListBuckets => {
-            let resp = bucket::list_buckets(&s3_client).await?;
-            let buckets = resp.buckets();
-            println!("{:25}  {}", "桶名称", "创建时间");
-            for bucket in buckets {
-                println!("{:25}  {}", bucket.name().unwrap_or_default(), bucket.creation_date().unwrap().fmt(Format::DateTime).unwrap())
-            }
+            bucket::list_buckets(&s3_client).await?;
         }
         Commands::CreateBucket { bucket } => {
-            println!("CreateBucket -> {bucket}");
-            let resp = bucket::create_bucket(&s3_client, &bucket).await;
-            println!("result -> {}", resp.is_ok())
+            bucket::create_bucket(&s3_client, &bucket).await?;
         }
         Commands::DeleteBucket { bucket } => {
             bucket::delete_bucket(&s3_client, &bucket).await?;
         }
-        Commands::ListObjects { bucket } => {
-            let resp = object::list_objects(&s3_client, &bucket).await?;
+        Commands::ListObjects { bucket, prefix } => {
+            object::list_objects(&s3_client, &bucket, &prefix).await?;
         }
 
         Commands::Diff {
