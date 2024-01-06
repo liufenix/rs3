@@ -51,6 +51,36 @@ enum Commands {
         default_missing_value = "")]
         prefix: String
     },
+    PutObject {
+        /// the bucket
+        #[arg(short, long)]
+        bucket: String,
+        /// key
+        #[arg(short, long)]
+        key: String,
+        /// local file path
+        #[arg(short, long)]
+        path: String
+    },
+    DeleteObject {
+        /// the bucket
+        #[arg(short, long)]
+        bucket: String,
+        /// key
+        #[arg(short, long)]
+        key: String
+    },
+    DownloadObject {
+        /// the bucket
+        #[arg(short, long)]
+        bucket: String,
+        /// key
+        #[arg(short, long)]
+        key: String,
+        /// local file path
+        #[arg(short, long)]
+        dir: String
+    },
     /// Compare two commits
     Diff {
         #[arg(value_name = "COMMIT")]
@@ -129,7 +159,7 @@ struct StashPushArgs {
 }
 
 #[tokio::main]
-async fn main() -> Result<(), Error>  {
+async fn main() -> Result<()>  {
     println!("Hello, world!");
 
     let local_config = Config::builder()
@@ -164,7 +194,15 @@ async fn main() -> Result<(), Error>  {
         Commands::ListObjects { bucket, prefix } => {
             object::list_objects(&s3_client, &bucket, &prefix).await?;
         }
-
+        Commands::PutObject {bucket, key, path} => {
+            object::put_object(&s3_client, &bucket, &key, &path).await?;
+        }
+        Commands::DeleteObject {bucket, key} => {
+            object::delete_object(&s3_client, &bucket, &key).await?;
+        }
+        Commands::DownloadObject {bucket, key, dir} => {
+            object::download_object(&s3_client, &bucket, &key, &dir).await?;
+        }
         Commands::Diff {
             mut base,
             mut head,

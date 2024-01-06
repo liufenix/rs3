@@ -1,9 +1,15 @@
-
-use anyhow::{ Result};
+use std::path::Path;
+use anyhow::{anyhow, bail, Result};
 use aws_sdk_s3::Client;
 use aws_sdk_s3::error::SdkError;
+use aws_sdk_s3::operation::delete_object::DeleteObjectError;
+use aws_sdk_s3::primitives::ByteStream;
 use aws_sdk_s3::operation::list_objects_v2::ListObjectsV2Error;
+use std::fs::{create_dir_all, File};
+use std::io::{BufWriter, Write};
+use aws_sdk_s3::operation::put_object::PutObjectError;
 use aws_smithy_types::date_time::Format;
+use crate::error::Error;
 
 pub async fn list_objects(client: &Client, bucket_name: &str, prefix: &str) -> Result<String, SdkError<ListObjectsV2Error>> {
 	// BUILD - aws request
@@ -24,6 +30,61 @@ pub async fn list_objects(client: &Client, bucket_name: &str, prefix: &str) -> R
 	Ok(String::from("OK"))
 }
 
+pub async fn put_object(client: &Client, bucket: &String, key: &String, path: &String) -> Result<()>{
+	let path = Path::new(path);
+	if !path.exists() {
+		bail!("Path {} does not exists", path.display());
+	}
+	// PREPARE
+	let body = ByteStream::from_path(&path).await?;
+	let content_type = mime_guess::from_path(&path).first_or_octet_stream().to_string();
+
+	client.put_object().bucket(bucket).key(key).body(body).content_type(content_type).send().await?;
+	println!("上传成功！");
+	Ok(())
+}
+
+pub async fn delete_object(client: &Client, bucket: &String, key: &String) -> Result<String, SdkError<DeleteObjectError>> {
+	client.delete_object().bucket(bucket)
+		.key(key)
+		.send().await?;
+	println!("删除对象成功！");
+	Ok(String::from("OK"))
+}
+
+pub async fn download_object(client: &Client, bucket: &String, key: &String, dir: &String) -> Result<()> {
+	let dir = Path::new(dir);
+	// VALIDATE
+	if !dir.is_dir() {
+		bail!("Path {} is not a directory", dir.display());
+	}
+	// create file path and parent dir(s)
+	let file_path = dir.join(key);
+	let parent_dir = file_path
+		.parent()
+		.ok_or_else(|| anyhow!("Invalid parent dir for {:?}", file_path))?;
+	if !parent_dir.exists() {
+		create_dir_all(parent_dir)?;
+	}
+
+	// BUILD - aws request
+	let req = client.get_object().bucket(bucket).key(key);
+
+	// EXECUTE
+	let res = req.send().await?;
+
+	// STREAM result to file
+	let mut data: ByteStream = res.body;
+	let file = File::create(&file_path)?;
+	let mut buf_writer = BufWriter::new(file);
+	while let Some(bytes) = data.try_next().await? {
+		buf_writer.write(&bytes)?;
+	}
+	buf_writer.flush()?;
+	println!("下载成功！");
+	Ok(())
+}
+
 fn format_size(bytes: f64) -> String {
 	let units = ["B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"];
 	let mut index = 0;
@@ -36,3 +97,4 @@ fn format_size(bytes: f64) -> String {
 
 	format!("{:.2} {}", size, units[index])
 }
+
