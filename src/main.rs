@@ -7,7 +7,7 @@ mod error;
 use std::{ffi::{OsString, OsStr}, path::PathBuf};
 
 use anyhow::{Result};
-use aws_smithy_types::date_time::Format;
+use aws_smithy_types::error::metadata::ProvideErrorMetadata;
 use config::{Config, File};
 use conf::AppConfig;
 
@@ -41,10 +41,14 @@ enum Commands {
     },
     ListObjects {
         /// the bucket
-        #[arg(required = true)]
+        #[arg(short, long)]
         bucket: String,
+
         /// the prefix
-        #[arg(required = false)]
+        #[arg(short, long,
+        required = false,
+        default_value_t = String::from(""),
+        default_missing_value = "")]
         prefix: String
     },
     /// Compare two commits
@@ -147,7 +151,15 @@ async fn main() -> Result<(), Error>  {
             bucket::create_bucket(&s3_client, &bucket).await?;
         }
         Commands::DeleteBucket { bucket } => {
-            bucket::delete_bucket(&s3_client, &bucket).await?;
+            let resp = bucket::delete_bucket(&s3_client, &bucket).await;
+            match resp  {
+                Ok(s) => {println!("")}
+                Err(error) => {
+                    let delete_error = error.into_service_error();
+                    //println!("{:?}", &delete_error);
+                    println!("删除失败：{} {}", &delete_error.code().unwrap_or("403"), &delete_error.message().unwrap_or(""))
+                }
+            }
         }
         Commands::ListObjects { bucket, prefix } => {
             object::list_objects(&s3_client, &bucket, &prefix).await?;

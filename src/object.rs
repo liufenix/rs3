@@ -1,5 +1,5 @@
 
-use anyhow::{anyhow, bail, Context, Result}; 
+use anyhow::{ Result};
 use aws_sdk_s3::Client;
 use aws_sdk_s3::error::SdkError;
 use aws_sdk_s3::operation::list_objects_v2::ListObjectsV2Error;
@@ -17,7 +17,6 @@ pub async fn list_objects(client: &Client, bucket_name: &str, prefix: &str) -> R
 	// COLLECT
 	let objects = res.contents();
 	println!("{:<48} | {:<5} | {:<30}", "对象key", "对象大小", "最后修改时间");
-	let max = 77;
 	for object in objects {
 		println!("{:<50} | {:<9} | {:<30}", object.key().unwrap(), format_size(object.size().unwrap() as f64), object.last_modified().unwrap().fmt(Format::DateTime).unwrap() )
 	}
