@@ -39,9 +39,6 @@ pub async fn put_object(client: &Client, bucket: &String, prefix: &String, path:
 		bail!("Path {} does not exists", path.display());
 	}
 	if path.is_dir() {
-		// let mut prefix = prefix.clone();
-		// prefix.push_str(path.file_name().unwrap().to_str().unwrap().trim());
-		// prefix.push_str("/");
 		upload_dir(client, bucket, &prefix, path).await?
 	} else {
 		upload_file(client, bucket, prefix, path).await?
