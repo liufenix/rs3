@@ -1,3 +1,4 @@
+use std::fs;
 use std::path::Path;
 use anyhow::{anyhow, bail, Result};
 use aws_sdk_s3::Client;
@@ -7,7 +8,10 @@ use aws_sdk_s3::primitives::ByteStream;
 use aws_sdk_s3::operation::list_objects_v2::ListObjectsV2Error;
 use std::fs::{create_dir_all, File};
 use std::io::{BufWriter, Write};
+
 use aws_smithy_types::date_time::Format;
+
+use async_recursion::async_recursion;
 
 
 pub async fn list_objects(client: &Client, bucket_name: &str, prefix: &str) -> Result<String, SdkError<ListObjectsV2Error>> {
@@ -29,17 +33,48 @@ pub async fn list_objects(client: &Client, bucket_name: &str, prefix: &str) -> R
 	Ok(String::from("OK"))
 }
 
-pub async fn put_object(client: &Client, bucket: &String, key: &String, path: &String) -> Result<()>{
+pub async fn put_object(client: &Client, bucket: &String, prefix: &String, path: &String) -> Result<()>{
 	let path = Path::new(path);
 	if !path.exists() {
 		bail!("Path {} does not exists", path.display());
 	}
-	// PREPARE
-	let body = ByteStream::from_path(&path).await?;
-	let content_type = mime_guess::from_path(&path).first_or_octet_stream().to_string();
+	if path.is_dir() {
+		// let mut prefix = prefix.clone();
+		// prefix.push_str(path.file_name().unwrap().to_str().unwrap().trim());
+		// prefix.push_str("/");
+		upload_dir(client, bucket, &prefix, path).await?
+	} else {
+		upload_file(client, bucket, prefix, path).await?
+	}
 
+	Ok(())
+}
+
+pub async fn upload_file(client: &Client, bucket: &String, prefix: &String, path: &Path) -> Result<()> {
+	// PREPARE
+	let body = ByteStream::from_path(path).await?;
+	let content_type = mime_guess::from_path(path).first_or_octet_stream().to_string();
+	let mut key = prefix.clone();
+	key.push_str( path.file_name().unwrap().to_str().unwrap().trim());
 	client.put_object().bucket(bucket).key(key).body(body).content_type(content_type).send().await?;
-	println!("上传成功！");
+	println!("upload {} SUCCESS", path.display());
+	Ok(())
+}
+
+#[async_recursion]
+pub async fn upload_dir(client: &Client, bucket: &String, prefix: &String, path: &Path) -> Result<()> {
+	for entry in fs::read_dir(path)? {
+		let entry = entry?;
+		let path = entry.path();
+		if path.is_dir() {
+			let mut prefix = prefix.clone();
+			prefix.push_str(path.file_name().unwrap().to_str().unwrap().trim());
+			prefix.push_str("/");
+			upload_dir(client, bucket, &prefix, &path).await?;
+		} else {
+			upload_file(client, bucket, prefix, &path).await?;
+		}
+	}
 	Ok(())
 }
 

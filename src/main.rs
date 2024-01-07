@@ -54,8 +54,8 @@ enum Commands {
         #[arg(short, long)]
         bucket: String,
         /// key
-        #[arg(short, long)]
-        key: String,
+        #[arg( long)]
+        prefix: String,
         /// local file path
         #[arg(short, long)]
         path: String
@@ -117,8 +117,8 @@ async fn main() -> Result<()>  {
         Commands::ListObjects { bucket, prefix } => {
             object::list_objects(&s3_client, &bucket, &prefix).await?;
         }
-        Commands::PutObject {bucket, key, path} => {
-            object::put_object(&s3_client, &bucket, &key, &path).await?;
+        Commands::PutObject {bucket, prefix, path} => {
+            object::put_object(&s3_client, &bucket, &prefix, &path).await?;
         }
         Commands::DeleteObject {bucket, key} => {
             object::delete_object(&s3_client, &bucket, &key).await?;
