@@ -1,7 +1,7 @@
-pub mod conf;
-pub mod client;
-pub mod object;
-pub mod bucket;
+mod conf;
+mod client;
+mod object;
+mod bucket;
 mod error;
 
 

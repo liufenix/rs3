@@ -3,7 +3,6 @@ use std::path::Path;
 use anyhow::{anyhow, bail, Result};
 use aws_sdk_s3::Client;
 use aws_sdk_s3::error::SdkError;
-use aws_sdk_s3::operation::delete_object::DeleteObjectError;
 use aws_sdk_s3::primitives::ByteStream;
 use aws_sdk_s3::operation::list_objects_v2::ListObjectsV2Error;
 use std::fs::{create_dir_all, File};
@@ -85,25 +84,34 @@ pub async fn delete_object(client: &Client, bucket: &String, key: &String) -> Re
 	Ok(())
 }
 
-pub async fn delete_dir(client: &Client, bucket: &String, dir: &String) -> Result<()> {
-	let mut continue_token = String::from("");
-	let mut is_truncated = true;
-	while is_truncated {
-		let resp = client.list_objects_v2().bucket(bucket).prefix(dir).continuation_token(continue_token).send().await?;
-		is_truncated = resp.is_truncated.unwrap();
-		continue_token = resp.next_continuation_token.unwrap_or(String::from(""));
+pub async fn delete_dir(client: &Client, bucket: &str, dir: &str) -> Result<()> {
 
-		for object in resp.contents.unwrap() {
-			delete_key(client, bucket, &String::from(object.key().unwrap())).await?
+
+	let mut response = client
+		.list_objects_v2()
+		.bucket(bucket)
+		.prefix(dir)
+		.max_keys(10) // In this example, go 10 at a time.
+		.into_paginator()
+		.send();
+
+	while let Some(result) = response.next().await {
+		match result {
+			Ok(output) => {
+				for object in output.contents() {
+					delete_key(client, bucket, object.key().unwrap()).await?
+				}
+			}
+			Err(err) => {
+				eprintln!("{err:?}")
+			}
 		}
 	}
 
-
 	Ok(())
-
 }
 
-pub async fn delete_key(client: &Client, bucket: &String, key: &String) -> Result<()> {
+pub async fn delete_key(client: &Client, bucket: &str, key: &str) -> Result<()> {
 	client.delete_object().bucket(bucket)
 		.key(key)
 		.send().await?;
