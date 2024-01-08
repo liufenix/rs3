@@ -75,13 +75,42 @@ pub async fn upload_dir(client: &Client, bucket: &String, prefix: &String, path:
 	Ok(())
 }
 
-pub async fn delete_object(client: &Client, bucket: &String, key: &String) -> Result<String, SdkError<DeleteObjectError>> {
+pub async fn delete_object(client: &Client, bucket: &String, key: &String) -> Result<()> {
+
+	if key.ends_with("/") {
+		delete_dir(client, bucket, key).await?
+	} else {
+		delete_key(client, bucket, key).await?
+	}
+	Ok(())
+}
+
+pub async fn delete_dir(client: &Client, bucket: &String, dir: &String) -> Result<()> {
+	let mut continue_token = String::from("");
+	let mut is_truncated = true;
+	while is_truncated {
+		let resp = client.list_objects_v2().bucket(bucket).prefix(dir).continuation_token(continue_token).send().await?;
+		is_truncated = resp.is_truncated.unwrap();
+		continue_token = resp.next_continuation_token.unwrap_or(String::from(""));
+
+		for object in resp.contents.unwrap() {
+			delete_key(client, bucket, &String::from(object.key().unwrap())).await?
+		}
+	}
+
+
+	Ok(())
+
+}
+
+pub async fn delete_key(client: &Client, bucket: &String, key: &String) -> Result<()> {
 	client.delete_object().bucket(bucket)
 		.key(key)
 		.send().await?;
-	println!("删除对象成功！");
-	Ok(String::from("OK"))
+	println!("DELETE {} SUCCESS！", key);
+	Ok(())
 }
+
 
 pub async fn download_object(client: &Client, bucket: &String, key: &String, dir: &String) -> Result<()> {
 	let dir = Path::new(dir);
