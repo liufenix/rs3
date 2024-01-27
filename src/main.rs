@@ -78,6 +78,14 @@ enum Commands {
         /// local file path
         #[arg(short, long)]
         dir: String
+    },
+    HeadObject {
+        /// the bucket
+        #[arg(short,long)]
+        bucket: String,
+        /// the key
+        #[arg(short, long)]
+        key: String
     }
 }
 
@@ -125,6 +133,9 @@ async fn main() -> Result<()>  {
         }
         Commands::DownloadObject {bucket, key, dir} => {
             object::download_object(&s3_client, &bucket, &key, &dir).await?;
+        }
+        Commands::HeadObject {bucket, key} => {
+            object::head_object(&s3_client, &bucket, &key).await?;
         }
     }
 

@@ -116,6 +116,12 @@ pub async fn download_object(client: &Client, bucket: &String, key: &String, dir
 	Ok(())
 }
 
+pub async fn head_object(client: &Client, bucket: &str, key: &str) -> Result<()>{
+	let resp = client.head_object().bucket(bucket).key(key).send().await?;
+	println!("head result \n\r{:?}", resp);
+	Ok(())
+}
+
 fn format_size(bytes: f64) -> String {
 	let units = ["B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"];
 	let mut index = 0;
@@ -128,4 +134,5 @@ fn format_size(bytes: f64) -> String {
 
 	format!("{:.2} {}", size, units[index])
 }
+
 
