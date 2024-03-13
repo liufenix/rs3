@@ -1,17 +1,16 @@
-mod conf;
-mod client;
-mod object;
-mod bucket;
+pub mod bucket;
+pub mod client;
+pub mod conf;
 mod error;
+pub mod object;
 
-
-use anyhow::{Result};
+use anyhow::Result;
 use aws_smithy_types::error::metadata::ProvideErrorMetadata;
-use config::{Config, File};
 use conf::AppConfig;
+use config::{Config, File};
 
 // clap 引用
-use clap::{ Parser, Subcommand};
+use clap::{Parser, Subcommand};
 
 /// A fictional versioning CLI
 #[derive(Debug, Parser)] // requires `derive` feature
@@ -20,7 +19,6 @@ use clap::{ Parser, Subcommand};
 struct Cli {
     #[command(subcommand)]
     command: Commands,
-
 }
 
 #[derive(Debug, Subcommand)]
@@ -47,18 +45,18 @@ enum Commands {
         required = false,
         default_value_t = String::from(""),
         default_missing_value = "")]
-        prefix: String
+        prefix: String,
     },
     PutObject {
         /// the bucket
         #[arg(short, long)]
         bucket: String,
         /// key
-        #[arg( long)]
+        #[arg(long)]
         prefix: String,
         /// local file path
         #[arg(short, long)]
-        path: String
+        path: String,
     },
     DeleteObject {
         /// the bucket
@@ -66,7 +64,7 @@ enum Commands {
         bucket: String,
         /// key
         #[arg(short, long)]
-        key: String
+        key: String,
     },
     DownloadObject {
         /// the bucket
@@ -77,28 +75,28 @@ enum Commands {
         key: String,
         /// local file path
         #[arg(short, long)]
-        dir: String
+        dir: String,
     },
     HeadObject {
         /// the bucket
-        #[arg(short,long)]
+        #[arg(short, long)]
         bucket: String,
         /// the key
         #[arg(short, long)]
-        key: String
-    }
+        key: String,
+    },
 }
 
-
 #[tokio::main]
-async fn main() -> Result<()>  {
-
+async fn main() -> Result<()> {
     let local_config = Config::builder()
         .add_source(File::with_name("config.toml"))
         .build()
         .expect("构建配置错误");
 
-    let config: AppConfig = local_config.try_deserialize().expect("反序列化配置文件错误");
+    let config: AppConfig = local_config
+        .try_deserialize()
+        .expect("反序列化配置文件错误");
 
     let s3_client = client::get_aws_client(&config);
 
@@ -113,28 +111,36 @@ async fn main() -> Result<()>  {
         }
         Commands::DeleteBucket { bucket } => {
             let resp = bucket::delete_bucket(&s3_client, &bucket).await;
-            match resp  {
-                Ok(_) => {},
+            match resp {
+                Ok(_) => {}
                 Err(error) => {
                     let delete_error = error.into_service_error();
                     //println!("{:?}", &delete_error);
-                    println!("删除失败：{} {}", &delete_error.code().unwrap_or("403"), &delete_error.message().unwrap_or(""))
+                    println!(
+                        "删除失败：{} {}",
+                        &delete_error.code().unwrap_or("403"),
+                        &delete_error.message().unwrap_or("")
+                    )
                 }
             }
         }
         Commands::ListObjects { bucket, prefix } => {
             object::list_objects(&s3_client, &bucket, &prefix).await?;
         }
-        Commands::PutObject {bucket, prefix, path} => {
+        Commands::PutObject {
+            bucket,
+            prefix,
+            path,
+        } => {
             object::put_object(&s3_client, &bucket, &prefix, &path).await?;
         }
-        Commands::DeleteObject {bucket, key} => {
+        Commands::DeleteObject { bucket, key } => {
             object::delete_object(&s3_client, &bucket, &key).await?;
         }
-        Commands::DownloadObject {bucket, key, dir} => {
+        Commands::DownloadObject { bucket, key, dir } => {
             object::download_object(&s3_client, &bucket, &key, &dir).await?;
         }
-        Commands::HeadObject {bucket, key} => {
+        Commands::HeadObject { bucket, key } => {
             object::head_object(&s3_client, &bucket, &key).await?;
         }
     }
