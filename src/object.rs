@@ -3,7 +3,6 @@ use std::path::Path;
 use anyhow::{anyhow, bail, Result};
 use aws_sdk_s3::Client;
 use aws_sdk_s3::error::SdkError;
-use aws_sdk_s3::operation::delete_object::DeleteObjectError;
 use aws_sdk_s3::primitives::ByteStream;
 use aws_sdk_s3::operation::list_objects_v2::ListObjectsV2Error;
 use std::fs::{create_dir_all, File};
@@ -75,13 +74,51 @@ pub async fn upload_dir(client: &Client, bucket: &String, prefix: &String, path:
 	Ok(())
 }
 
-pub async fn delete_object(client: &Client, bucket: &String, key: &String) -> Result<String, SdkError<DeleteObjectError>> {
+pub async fn delete_object(client: &Client, bucket: &String, key: &String) -> Result<()> {
+
+	if key.ends_with("/") {
+		delete_dir(client, bucket, key).await?
+	} else {
+		delete_key(client, bucket, key).await?
+	}
+	Ok(())
+}
+
+pub async fn delete_dir(client: &Client, bucket: &str, dir: &str) -> Result<()> {
+
+
+	let mut response = client
+		.list_objects_v2()
+		.bucket(bucket)
+		.prefix(dir)
+		.max_keys(10) // In this example, go 10 at a time.
+		.into_paginator()
+		.send();
+
+	while let Some(result) = response.next().await {
+		match result {
+			Ok(output) => {
+				for object in output.contents() {
+					delete_key(client, bucket, object.key().unwrap()).await?
+				}
+			}
+			Err(err) => {
+				eprintln!("{err:?}")
+			}
+		}
+	}
+
+	Ok(())
+}
+
+pub async fn delete_key(client: &Client, bucket: &str, key: &str) -> Result<()> {
 	client.delete_object().bucket(bucket)
 		.key(key)
 		.send().await?;
-	println!("删除对象成功！");
-	Ok(String::from("OK"))
+	println!("DELETE {} SUCCESS！", key);
+	Ok(())
 }
+
 
 pub async fn download_object(client: &Client, bucket: &String, key: &String, dir: &String) -> Result<()> {
 	let dir = Path::new(dir);
