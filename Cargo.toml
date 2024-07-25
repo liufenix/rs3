@@ -2,7 +2,8 @@
 name = "rs3"
 version = "0.1.0"
 edition = "2021"
-
+authors = ["Fenix <liufenix@foxmail.com>"]
+description = "A Rust-based AWS S3 CLI tool"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
@@ -21,3 +22,7 @@ aws-sdk-s3 = "1"
 aws-smithy-types = { version = "1.0.1", features = ["http-body-0-4-x"] }
 thiserror = "1.0"
 async-recursion = "1.0.5"
+
+log = "0.4.17"
+env_logger = "0.10.0"
+chrono = { version = "0.4", features = ["serde"] }
