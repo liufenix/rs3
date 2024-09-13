@@ -8,21 +8,23 @@ description = "A Rust-based AWS S3 CLI tool"
 
 [dependencies]
 futures = "0.3"
-tokio = { version = "1", features = ["full"] }
+tokio = { version = "1.40", features = ["full"] }
 anyhow = "1"
 mime_guess = "2"
-clap = { version = "4", features = ["derive"] }
+clap = { version = "4.5.17", features = ["derive"] }
 # read config.toml
 config = "0.13"
 serde = { version = "1", features = ["derive"] }
 
 # Aws libs
-aws-config = "1"
-aws-sdk-s3 = "1"
-aws-smithy-types = { version = "1.0.1", features = ["http-body-0-4-x"] }
+aws-config = "1.5.5"
+aws-sdk-s3 = "1.48"
+aws-smithy-types = { version = "1.2.4", features = ["http-body-0-4-x"] }
 thiserror = "1.0"
 async-recursion = "1.0.5"
 
 log = "0.4.17"
 env_logger = "0.10.0"
 chrono = { version = "0.4", features = ["serde"] }
+
+time = "0.3.36"

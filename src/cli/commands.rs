@@ -36,7 +36,6 @@ impl Command {
     pub async fn execute(&self, client: &S3Client) -> Result<()> {
         match self {
             Command::ListBuckets => {
-                info!("Listing buckets");
                 let buckets = client.list_buckets().await?;
                 for bucket in buckets {
                     println!("{:30}   {}",
